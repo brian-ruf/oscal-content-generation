@@ -1,0 +1,8 @@
+
+saxonche == 12.5.0
+lxml
+loguru
+requests
+elementpath
+
+
