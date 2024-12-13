@@ -6,7 +6,7 @@ This is intended to grow over time.
 
 Current:
 - ssp_content_creator.py: 
-  - creates `implemented-control` assemblies within an existing SSP based on a specified FedRAMP baseline. For each `implemented-control`:
+  - creates `implemented-requirement` assemblies within an existing SSP based on a specified FedRAMP baseline. For each `implemented-requirement`:
     - creates one `set-parameter` assemby for each parameter in the baseline (assigns each a "placeholder" value.)
     - creates one `statement` assembly for each defined response point.
     - creates one `by-component` assembly within each statement, representing the `"this-system"` component 
