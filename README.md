@@ -15,7 +15,7 @@ Current:
 
 NOTES: 
 - The only FedRAMP-specific aspect of this work is the use of the "response-point" property/FedRAPM extension indicating the statements at which SSP responses are expected. Otherwise, this creates core-OSCAL.
-- No profile resolution. This is uses the FedRAMP Resolved Profile Catalog for any baseline. 
+- No profile resolution. This uses the FedRAMP Resolved Profile Catalog for any FedRAMP OSCAL Rev 5 baseline. 
 
 Future:
 - Generate components
