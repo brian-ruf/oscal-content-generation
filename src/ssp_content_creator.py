@@ -202,6 +202,21 @@ Properties:
         return str(ret_value)
 
     def xpath(self, xExpr, context=None):
+        """
+        Performs an xpath query either on the entire XML document 
+        or on a context within the document.
+
+        Parameters:
+        - xExpr (str): An xpath expression
+        - context (obj)[optional]: Context object.
+        If the context object is present, the xpath expression is run against
+        that context. If absent, the xpath expression is run against the 
+        entire document.
+
+        Returns: 
+        - None if there is an error or if nothing is found.
+        - 
+        """
         
         ret_value=None
         if context is None:
@@ -210,14 +225,61 @@ Properties:
         else:
             logger.debug("XPath [1] (" + context.tag + "): " + xExpr)
             ret_value = elementpath.select(context, xExpr, namespaces=self.nsmap)
+        logger.debug(str(type(ret_value)))
         return ret_value
 
     def serializer(self):
-
+        logger.debug("Serializing for Output")
         ElementTree.indent(self.tree)
-        out_string = normalize_content(ElementTree.tostring(self.tree, 'utf-8'))
+        out_string = ElementTree.tostring(self.tree, 'utf-8')
+        logger.debug("LEN: " + str(len(out_string)))
+        out_string = normalize_content(out_string)
+        out_string = out_string.replace("ns0:", "")
+        out_string = out_string.replace(":ns0", "")
         
-        return out_string.replace("ns0:", "")
+        return out_string
+    
+    def lookup(self, xExpr: str, attributes: list=[], children: list=[]):
+        """
+        Checks for the existence of an element basedon an xpath expression.
+        Returns a dict containing any of the following if available: id, uuid, title
+        If aditional attributes or children are specified in the function call
+        and found to be present, they are included in the dict as well. 
+        Parameters:
+        - xExpr (str): xpath expression. This should always evaluate to 0 or 1 nodes
+        - attributes(list)[Optional]: a list of additional attributes to return
+        - children(list)[Optional]: a list of additional children to return
+
+        Return:
+        - dict or None
+        dict = {
+           {'attribute/field name', 'value'},
+           {'attribute/field name', 'value'}        
+        }
+        """
+        ret_value = None
+        target_node = self.xpath(xExpr)
+        if target_node:
+            ret_value = {}
+            if 'id' in target_node.attrib:
+                ret_value.append({"id", target_node.get("id")})
+            if 'uuid' in target_node.attrib:
+                ret_value.append({"uuid", target_node.get("uuid")})
+
+            title = target_node.find('./title', self.nsmap)
+            if title:
+                ret_value.append({"title", title.text})
+
+            for attribute in attributes:
+                ret_value.append({attribute, target_node.get(attribute)})
+
+            for child in children:
+                child_node = target_node.find('./' + child, self.nsmap)
+                if child_node:
+                    ret_value.append({child, child_node.text})
+
+
+        return ret_value
 
     def append_child(self, xpath, node_name, node_content = None, attribute_list = []):
         # logger.debug("APPENDING " + node_name + " as child to " + xpath) #  + " in " + self.tree.tag)
@@ -365,7 +427,9 @@ ssp_obj = oscal(ssp_content)
 if catalog_obj.valid_oscal:
     if ssp_obj.valid_oscal:
         if insert_controls(catalog_obj, ssp_obj):
-            putfile(ssp_complete_file, ssp_obj.serializer())
+            output = ssp_obj.serializer()
+            logger.debug(str(type(output)))
+            putfile(ssp_complete_file, output)
         else: 
             logger.error("Problem inserting controls. No file created.")
     else:

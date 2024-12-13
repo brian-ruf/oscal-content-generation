@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<system-security-plan xmlns:ns0="http://csrc.nist.gov/ns/oscal/1.0" uuid="11111111-2222-4000-8000-000000000000">
+<system-security-plan xmlns="http://csrc.nist.gov/ns/oscal/1.0" uuid="11111111-2222-4000-8000-000000000000">
   <metadata>
     <title>FedRAMP [Baseline Name] System Security Plan (SSP)</title>
     <published>2024-12-31T23:59:59Z</published>
