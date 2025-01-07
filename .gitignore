@@ -1,8 +1,6 @@
 .vscode/
-cache/
-data/
 logs/
-playground/
+*.hold
 
 # Distribution / packaging
 __pycache__/

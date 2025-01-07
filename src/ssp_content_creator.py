@@ -415,8 +415,8 @@ def insert_controls(catalog_obj, ssp_obj):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 catalog_url = "https://raw.githubusercontent.com/GSA/fedramp-automation/refs/heads/develop/dist/content/rev5/baselines/xml/FedRAMP_rev5_HIGH-baseline-resolved-profile_catalog.xml"
-ssp_base_file = "./fedramp-ssp-example_base.oscal.xml"
-ssp_complete_file = "./fedramp-ssp-example.oscal.xml"
+ssp_base_file     = "./fedramp-ssp-example.oscal.xml"
+ssp_complete_file = "./fedramp-ssp-example_new.oscal.xml"
 ssp_control_output = ""
 
 catalog_content = fetch_file(catalog_url)
