@@ -1,16 +1,18 @@
 from loguru import logger
-from saxonche import *
 # from lxml import etree as ET
 import elementpath
 from elementpath.xpath3 import XPath3Parser
 from xml.etree import ElementTree
 from xml.dom import minidom
 from common import *
+from datetime import datetime
+import sys
 
 log_level = "DEBUG"
-new_level = logger.level("DATABASE", no=38, color="<blue>")
-# log_format = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>"
-logger.add("logs/app_{time}.log", level=log_level, rotation="5 MB", retention="12 hours", enqueue=True)
+logger.remove()
+logger.add("logs/app_{time}.log", level=log_level, rotation="5 MB", retention=1, enqueue=True)
+log_level = "INFO"
+logger.add(sys.stderr, level=log_level)
 logger.debug("Start")
 
 OSCAL_DEFAULT_NAMESPACE = "http://csrc.nist.gov/ns/oscal/1.0"
@@ -72,7 +74,13 @@ Properties:
             else:
                 logger.error("ROOT ELEMENT IS NOT AN OSCAL MODEL: " + root_element)
 
-
+    def oscal_set_last_modified(self):
+        """
+        Sets the last-modified date in the metadata field to the current date and time.
+        """
+        current_time = oscal_date_time_with_timezone() # str(datetime.now().isoformat())
+        self.tree.find('.//metadata/last-modified', namespaces=self.nsmap).text = current_time
+        logger.debug(f"Setting Last Modified to: {self.tree.find('.//metadata/last-modified', namespaces=self.nsmap).text}")
 
     def OSCAL_validate(self):
         """
@@ -91,102 +99,6 @@ Properties:
         'xml-to-yaml'
         """
         pass
-
-    def __setup_saxon(self): # Future - place holder for code for now
-        self.__saxon = PySaxonProcessor(license=False)
-        try: 
-            self.xdm = self.__saxon.parse_xml(xml_text=content)
-            # self.__saxon.declare_namespace("", "http://csrc.nist.gov/ns/oscal/1.0")
-            self.valid = True
-            self.oscal_format = "xml"
-        except:
-            logger.error("Content does not appear to be valid XML. Unable to rpoceed")
-
-        if self.valid:
-            self.xp = self.__saxon.new_xpath_processor() # Instantiates XPath processing
-            self.handle_ns()
-            self.xp.set_context(xdm_item=self.xdm) # Sets xpath processing context as the whole file
-            temp_ret = self.xpath_global("/*/name()")
-            if temp_ret is not None:
-                self.root_node = temp_ret[0].get_atomic_value().string_value
-                logger.debug("ROOT: " + self.root_node)
-            self.oscal_version = self.xpath_global_single("/*/*:metadata/*:oscal-version/text()")
-            logger.debug("OSCAL VERSION: " + self.oscal_version)
-
-    def __saxon_serializer(self):
-        return self.xdm.to_string('utf_8')
-
-
-    def __saxon_handle_ns(self):
-        node_ = self.xdm
-        child = node_.children[0]
-        assert child is not None
-        namespaces = child.axis_nodes(8)
-
-        for ns in namespaces:
-            uri_str = ns.string_value
-            ns_prefix = ns.name
-
-            if ns_prefix is not None:
-                logger.debug("xmlns:" + ns_prefix + "='" + uri_str + "'")
-            else:
-                logger.debug("xmlns uri=" + uri_str + "'")
-                # set default ns here
-                self.xp.declare_namespace("", uri_str)
-
-
-    def __saxon_xpath_global(self, expression):
-        ret_value = None
-        logger.debug("Global Evaluating: " + expression)
-        ret = self.xp.evaluate(expression)
-        if  isinstance(ret,PyXdmValue):
-            logger.debug("--Return Size: " + str(ret.size))
-            ret_value = ret
-        else:
-            logger.debug("--No result")
-
-        return ret_value
-
-    def __saxon_xpath_global_single(self, expression):
-        ret_value = ""
-        logger.debug("Global Evaluating Single: " + expression)
-        ret = self.xp.evaluate_single(expression)
-        if  isinstance(ret, PyXdmValue): # isinstance(ret,PyXdmNode):
-            ret_value = ret.string_value
-        else:
-            logger.debug("--No result")
-            logger.debug("TYPE: " + str(type(ret)))
-
-        return ret_value
-
-
-    def __saxon_xpath(self, context, expression):
-        ret_value = None
-        logger.debug("Evaluating: " + expression)
-        xp = self.__saxon.new_xpath_processor() # Instantiates XPath processing
-        xp.set_context(xdm_item=context)
-        ret = xp.evaluate(expression)
-        if  isinstance(ret,PyXdmValue):
-            logger.debug("--Return Size: " + str(ret.size))
-            ret_value = ret
-        else:
-            logger.debug("--No result")
-
-        return ret_value
-
-    def __saxon_xpath_single(self, context, expression):
-        ret_value = ""
-        logger.debug("Evaluating Single: " + expression)
-        xp = self.__saxon.new_xpath_processor() # Instantiates XPath processing
-        xp.set_context(xdm_item=context)
-        ret = xp.evaluate_single(expression)
-        if  isinstance(ret, PyXdmValue): # isinstance(ret,PyXdmNode):
-            ret_value = ret.string_value
-        else:
-            logger.debug("--No result")
-            logger.debug("TYPE: " + str(type(ret)))
-
-        return ret_value
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     
@@ -198,7 +110,7 @@ Properties:
         else:
             logger.debug("XPath [1] (" + context.tag + "): " + xExpr)
             ret_value = elementpath.select(context, xExpr, namespaces=self.nsmap)[0]
-
+        logger.debug(str(type(ret_value)))
         return str(ret_value)
 
     def xpath(self, xExpr, context=None):
@@ -217,7 +129,6 @@ Properties:
         - None if there is an error or if nothing is found.
         - 
         """
-        
         ret_value=None
         if context is None:
             logger.debug("XPath [1]: " + xExpr)
@@ -318,7 +229,7 @@ def append_params(control_obj, implemented_requirement, catalog_obj):
     params = catalog_obj.xpath("./param", control_obj)
     # params = control_obj.find("./param", namespaces=nsmap)
     if params is not None:
-        logger.debug("PARAMS FOUND: " + str(len(params)))
+        logger.debug("--ADDING PARAMS: " + str(len(params)))
         for param in params:
             param_response = ElementTree.Element("set-parameter")
             param_response.set("param-id", param.get("id"))
@@ -328,15 +239,15 @@ def append_params(control_obj, implemented_requirement, catalog_obj):
             implemented_requirement.append(param_response)
 
 
-def append_response_points(control_obj, implemented_requirement, catalog_obj, statement_uuid):
+def append_response_points(control_obj, implemented_requirement, catalog_obj, statement_uuid, control_id):
     uuid_statement_incr = 100
     uuid_component_incr = 1
     rp_expansion = "./part[@name='statement']//prop[@name='response-point' and @ns='https://fedramp.gov/ns/oscal']/../@id"
-    logger.debug("Looking for Response Points")
+    # logger.debug("Looking for Response Points")
     r_points = catalog_obj.xpath(rp_expansion, control_obj)
-    logger.debug(r_points)
+    # logger.debug(r_points)
     if r_points is not None:
-        logger.debug("RPs FOUND: " + str(len(r_points)))
+        # logger.info("-- RPs FOUND: " + str(len(r_points)))
         for rp in r_points:
             statement = ElementTree.Element("statement")
             statement.set("statement-id", rp)
@@ -346,18 +257,44 @@ def append_response_points(control_obj, implemented_requirement, catalog_obj, st
                                 "This is the 'this-system' component that must be present for every statement")
             implemented_requirement.append(statement)
             statement_uuid += uuid_statement_incr
+            # If this is part "a" of a -1 control, insert a "policy" component and a "process-procedure" component
+            if control_id[-2:] == "-1" and rp[-6:] == "_smt.a":
+                append_by_component(statement, statement_uuid + uuid_component_incr, 
+                                    "11111111-2222-4000-8000-009000600002", 
+                                    "This is a 'policy' component that must be present for part a of every -1 control.") 
+                implemented_requirement.append(statement)
+                statement_uuid += uuid_statement_incr
 
+                append_by_component(statement, statement_uuid + uuid_component_incr, 
+                                    "11111111-2222-4000-8000-009000800002", 
+                                    "This is a 'process-procedure' component that must be present for part a of every -1 control.") 
+                implemented_requirement.append(statement)
+                statement_uuid += uuid_statement_incr
 
 def append_by_component(statement, by_component_uuid, component_uuid, content=""):
 
-    by_component = ElementTree.Element("by-component")
-    by_component.set("component-uuid", component_uuid)
-    by_component.set("uuid", uuid_format(by_component_uuid))
-    description = ElementTree.Element("description")
-    paragraph = ElementTree.Element("p")
+    by_component = ElementTree.Element("by-component") # Create the by-component element
+    by_component.set("component-uuid", component_uuid) # Set the component-uuid attribute
+    by_component.set("uuid", uuid_format(by_component_uuid)) # Set the uuid attribute
+
+    # Description
+    description = ElementTree.Element("description") # Create the description element
+    paragraph = ElementTree.Element("p")  # Need a p element as description is markup multi-line
     paragraph.text = content
     description.append(paragraph)
     by_component.append(description)
+
+    # Implementation Status
+    implementation_status = ElementTree.Element("implementation-status")
+    implementation_status.set("state", "operational")
+    by_component.append(implementation_status)
+
+
+    # Responsibe Roles
+    responsible_roles = ElementTree.Element("responsible-role")
+    responsible_roles.set("role-id", "isso")
+    by_component.append(responsible_roles)
+
     statement.append(by_component)
 
 
@@ -376,7 +313,7 @@ def process_components(by_component_uuid): # catalog_obj, xpath_expression, cont
 
 def insert_controls(catalog_obj, ssp_obj):
     logger.debug("Inserting Controls ...")
-    limit = 5
+    limit = 500
     limit_cntr = 0
     ssp_control_output = ""
     uuid_cntr=12000000000
@@ -391,13 +328,13 @@ def insert_controls(catalog_obj, ssp_obj):
             uuid_cntr += uuid_control_incr
             control_id = (catalog_obj.xpath_atomic("./@id", context=control_obj)).strip()
             if control_id not in ["ac-1", "ac-2"]:
-                logger.debug("CONTROL: " + control_id)
+                logger.info("CONTROL: " + control_id)
                 attributes = [["control-id", control_id], ["uuid", uuid_format(uuid_cntr)]]
                 implemented_requirement = ssp_obj.append_child("control-implementation" , "implemented-requirement", node_content = None, attribute_list = attributes)
 
                 if implemented_requirement is not None:
                     append_params(control_obj, implemented_requirement, catalog_obj)
-                    append_response_points(control_obj, implemented_requirement, catalog_obj, uuid_cntr)
+                    append_response_points(control_obj, implemented_requirement, catalog_obj, uuid_cntr, control_id)
 
                     status = True
             else:
@@ -427,8 +364,10 @@ ssp_obj = oscal(ssp_content)
 if catalog_obj.valid_oscal:
     if ssp_obj.valid_oscal:
         if insert_controls(catalog_obj, ssp_obj):
+            ssp_obj.oscal_set_last_modified()
             output = ssp_obj.serializer()
             logger.debug(str(type(output)))
+
             putfile(ssp_complete_file, output)
         else: 
             logger.error("Problem inserting controls. No file created.")

@@ -2,6 +2,7 @@ from loguru import logger
 import requests
 import urllib
 import uuid
+from datetime import datetime, timezone 
 
 TAB = "   "
 def indent(level=0):
@@ -92,3 +93,24 @@ def uuid_format(uuid_suffix=None):
 
     return ret_value 
 
+# -----------------------------------------------------------------------------
+def oscal_date_time_with_timezone(date_time = datetime.now(), format = "%Y-%m-%dT%H:%M:%SZ")-> str:
+    """
+    Converts a date and time to UTC and ouptuts an OSCAL date-time-with-timezone string. 
+    Optional Parameters:
+    - date_time (datetime): A date and time to convert to a formatted string.
+       default is the current date and time
+    - format (str): The formatting string to use
+        default is "%Y-%m-%d--%H-%M-%S" (YYYY-MM-DD--HH-MM-SS)
+
+    Returns a formatted date time string.
+    If an error occurs, returns an empty string.
+    """
+    ret_value = ""
+
+    try:
+        date_time = date_time.astimezone(timezone.utc)
+        ret_value = date_time.strftime(format)
+    except (Exception, BaseException) as error:
+        logger.error(f"{type(error).__name__} error handling date/time formatting: {str(error)}")
+    return ret_value

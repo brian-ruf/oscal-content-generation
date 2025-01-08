@@ -1,6 +1,7 @@
 .vscode/
 logs/
 *.hold
+fedramp-ssp-example_new.oscal.xml
 
 # Distribution / packaging
 __pycache__/
