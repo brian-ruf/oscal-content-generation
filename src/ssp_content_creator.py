@@ -226,7 +226,7 @@ Properties:
 def append_params(control_obj, implemented_requirement, catalog_obj):
 
     logger.debug("Looking for Params")
-    params = catalog_obj.xpath("./param", control_obj)
+    params = catalog_obj.xpath("//param[ not( ./prop[@name='aggregates' and @ns='http://csrc.nist.gov/ns/rmf'])]", control_obj)
     # params = control_obj.find("./param", namespaces=nsmap)
     if params is not None:
         logger.debug("--ADDING PARAMS: " + str(len(params)))
@@ -242,34 +242,35 @@ def append_params(control_obj, implemented_requirement, catalog_obj):
 def append_response_points(control_obj, implemented_requirement, catalog_obj, statement_uuid, control_id):
     uuid_statement_incr = 100
     uuid_component_incr = 1
-    rp_expansion = "./part[@name='statement']//prop[@name='response-point' and @ns='https://fedramp.gov/ns/oscal']/../@id"
+    rp_expansion = "./part[@name='statement']//prop[@name='response-point' and @ns='http://fedramp.gov/ns/oscal']/../@id"
     # logger.debug("Looking for Response Points")
     r_points = catalog_obj.xpath(rp_expansion, control_obj)
     # logger.debug(r_points)
     if r_points is not None:
         # logger.info("-- RPs FOUND: " + str(len(r_points)))
         for rp in r_points:
+            # logger.debug("RP: " + rp)
             statement = ElementTree.Element("statement")
             statement.set("statement-id", rp)
             statement.set("uuid", uuid_format(statement_uuid))
             append_by_component(statement, statement_uuid + uuid_component_incr, 
                                 "11111111-2222-4000-8000-009000000000", 
                                 "This is the 'this-system' component that must be present for every statement")
-            implemented_requirement.append(statement)
             statement_uuid += uuid_statement_incr
             # If this is part "a" of a -1 control, insert a "policy" component and a "process-procedure" component
             if control_id[-2:] == "-1" and rp[-6:] == "_smt.a":
                 append_by_component(statement, statement_uuid + uuid_component_incr, 
                                     "11111111-2222-4000-8000-009000600002", 
                                     "This is a 'policy' component that must be present for part a of every -1 control.") 
-                implemented_requirement.append(statement)
                 statement_uuid += uuid_statement_incr
 
                 append_by_component(statement, statement_uuid + uuid_component_incr, 
                                     "11111111-2222-4000-8000-009000800002", 
                                     "This is a 'process-procedure' component that must be present for part a of every -1 control.") 
-                implemented_requirement.append(statement)
                 statement_uuid += uuid_statement_incr
+            implemented_requirement.append(statement)
+    else:
+        logger.debug("No Response Points Found")
 
 def append_by_component(statement, by_component_uuid, component_uuid, content=""):
 
@@ -294,6 +295,11 @@ def append_by_component(statement, by_component_uuid, component_uuid, content=""
     responsible_roles = ElementTree.Element("responsible-role")
     responsible_roles.set("role-id", "isso")
     by_component.append(responsible_roles)
+
+    # Party UUID
+    party_uuid = ElementTree.Element("party-uuid")
+    party_uuid.text = "11111111-2222-4000-8000-004000000008"
+    responsible_roles.append(party_uuid)
 
     statement.append(by_component)
 
@@ -327,7 +333,7 @@ def insert_controls(catalog_obj, ssp_obj):
         for control_obj in controls:
             uuid_cntr += uuid_control_incr
             control_id = (catalog_obj.xpath_atomic("./@id", context=control_obj)).strip()
-            if control_id not in ["ac-1", "ac-2"]:
+            if control_id not in ["ac-1", "ac-2", "ia-1"]:
                 logger.info("CONTROL: " + control_id)
                 attributes = [["control-id", control_id], ["uuid", uuid_format(uuid_cntr)]]
                 implemented_requirement = ssp_obj.append_child("control-implementation" , "implemented-requirement", node_content = None, attribute_list = attributes)
